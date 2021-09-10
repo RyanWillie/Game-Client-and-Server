@@ -9,24 +9,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/time.h>
-
+#include "connections.h"
 
 #define TRUE 1
 #define FALSE 0
 
-struct Connect
-{
-	fd_set readfds;
-	int max_clients;
-	int PORT;
-	int opt;
-	int sd;
-    int master_socket, addrlen, new_socket, client_socket[30], activity, i, valread;
-    int max_sd;
-    struct sockaddr_in address;
-};
-
-void startNumbers(struct Connect *PlayerConnections)
+void startNumbers(struct Connect *PlayerConnections);
 
 int main(int argc, char *argv[])
 {
@@ -38,47 +26,61 @@ int main(int argc, char *argv[])
 
 	Connect_Players(&PlayerConnections);
 	startNumbers(&PlayerConnections);
+
+	return 1;
 }
 
 void startNumbers(struct Connect *PlayerConnections){
+    char buffer[1025];
 	printf("Now we would start the games!\n");
-	int playerTurn, connected = PlayerConnections->max_clients;
+	int playerTurn = 0, connected = PlayerConnections->max_clients;
+	int Playing = TRUE;
 	//Wait for activity from the players
-	PlayerConnections->activity = select(PlayerConnections->max_sd + 1, &PlayerConnections->readfds, NULL, NULL, NULL);
-    if ((PlayerConnections->activity < 0) && (errno != EINTR))
-    {
-        printf("select error");
-    }
-
-	for (int i = 0; i < PlayerConnections->max_clients; i++)
-	{
-		if(playerTurn == i){}
-		PlayerConnections->sd = PlayerConnections->client_socket[i];
-
-
-		if (FD_ISSET(PlayerConnections->sd, &PlayerConnections->readfds))
+	
+	while(Playing){
+		PlayerConnections->activity = select(PlayerConnections->max_sd + 1, &PlayerConnections->readfds, NULL, NULL, NULL);
+		printf("i got here!");
+		if ((PlayerConnections->activity < 0) && (errno != EINTR))
 		{
-			//Client has sent something
+			printf("select error");
+		}
 
-			//Check if it was for closing , and also read the incoming message
-			if ((PlayerConnections->valread = read(PlayerConnections->sd, buffer, 1024)) == 0)
+		for (int i = 0; i < PlayerConnections->max_clients; i++)
+		{
+
+			PlayerConnections->sd = PlayerConnections->client_socket[i];
+
+
+			if (FD_ISSET(PlayerConnections->sd, &PlayerConnections->readfds))
 			{
-				//Somebody disconnected , get his details and print
-				getpeername(PlayerConnections->sd, (struct sockaddr *)&PlayerConnections->address, (socklen_t *)&PlayerConnections->addrlen);
-				printf("Host disconnected , ip %s , port %d \n", inet_ntoa(PlayerConnections->address.sin_addr), ntohs(PlayerConnections->address.sin_port));
+				//Client has sent something
+				//Check if it was for closing , and also read the incoming message
+				if ((PlayerConnections->valread = read(PlayerConnections->sd, buffer, 1024)) == 0)
+				{
+					//Somebody disconnected , get his details and print
+					getpeername(PlayerConnections->sd, (struct sockaddr *)&PlayerConnections->address, (socklen_t *)&PlayerConnections->addrlen);
+					printf("Host disconnected , ip %s , port %d \n", inet_ntoa(PlayerConnections->address.sin_addr), ntohs(PlayerConnections->address.sin_port));
 
-				//Close the socket and mark as 0 in list for reuse
-				close(PlayerConnections->sd);
-				PlayerConnections->client_socket[i] = 0;
-				printf("A client has disconnected, Game will have to exit\n");
-				exit(1);
+					//Close the socket and mark as 0 in list for reuse
+					close(PlayerConnections->sd);
+					PlayerConnections->client_socket[i] = 0;
+					printf("A client has disconnected, Game will have to exit\n");
+					exit(1);
+				}
 			}else
-			{
-				//set the string terminating NULL byte on the end
-				//of the data read
-				buffer[PlayerConnections->valread] = '\0';
-				send(PlayerConnections->sd, buffer, strlen(buffer), 0);
-			}
+				{
+					if(playerTurn == i){
+						printf("Messaged received from correct player %d\n", playerTurn);
+						strcpy(buffer, "It was your turn!\n");
+						send(PlayerConnections->sd, buffer, strlen(buffer), 0);
+						playerTurn++;
+					}else{
+						printf("Messaged recieved from incorrect player %d\n", i);
+						strcpy(buffer, "It is not your turn!");
+						send(PlayerConnections->sd, buffer, strlen(buffer), 0);
+					}
+				}
+
 		}
 	}
 }

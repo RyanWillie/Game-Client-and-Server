@@ -1,31 +1,4 @@
-//Example code: A simple server side code, which echos back the received message.
-//Handle multiple socket connections with select and fd_set on Linux
-#include <stdio.h>
-#include <string.h> //strlen
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>    //close
-#include <arpa/inet.h> //close
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <sys/time.h>
-
-struct Connect
-{
-	fd_set readfds;
-	int max_clients;
-	int PORT;
-	int opt;
-	int sd;
-    int master_socket, addrlen, new_socket, client_socket[30], activity, i, valread;
-    int max_sd;
-    struct sockaddr_in address;
-};
-
-
-#define TRUE 1
-#define FALSE 0
+#include "connections.h"
 
 void Connect_Players(struct Connect *PlayerConnections)
 {
@@ -124,12 +97,6 @@ void Connect_Players(struct Connect *PlayerConnections)
                 exit(1);
             }
 
-            //printf("New connection, socket fd is %d , ip is : %s , port : %d \n", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-            //send new connection greeting message
-            if (send(PlayerConnections->new_socket, message, strlen(message), 0) != strlen(message))
-            {
-                perror("send");
-            }
 			//add new socket to array of sockets
             for (i = 0; i < PlayerConnections->max_clients; i++)
             {
@@ -142,45 +109,10 @@ void Connect_Players(struct Connect *PlayerConnections)
                     break;
                 }
             }
-
-			
-
-
-        }
-
-        //else its some IO operation on some other socket
-        for (i = 0; i < PlayerConnections->max_clients; i++)
-        {
-           PlayerConnections->sd = PlayerConnections->client_socket[i];
-
-            if (FD_ISSET(PlayerConnections->sd, &PlayerConnections->readfds))
-            {
-                //Check if it was for closing , and also read the
-                //incoming message
-                if ((PlayerConnections->valread = read(PlayerConnections->sd, buffer, 1024)) == 0)
-                {
-                    //Somebody disconnected , get his details and print
-                    getpeername(PlayerConnections->sd, (struct sockaddr *)&PlayerConnections->address,
-                                (socklen_t *)&PlayerConnections->addrlen);
-                    printf("Host disconnected , ip %s , port %d \n",
-                           inet_ntoa(PlayerConnections->address.sin_addr), ntohs(PlayerConnections->address.sin_port));
-
-                    //Close the socket and mark as 0 in list for reuse
-                    close(PlayerConnections->sd);
-                    PlayerConnections->client_socket[i] = 0;
-                }else
-                {
-                    //set the string terminating NULL byte on the end
-                    //of the data read
-                    buffer[PlayerConnections->valread] = '\0';
-                    send(PlayerConnections->sd, buffer, strlen(buffer), 0);
-                }
-            }
         }
 
 		if(numPlayers == PlayerConnections->max_clients){
 			printf("All players have connected!\r\n");
-
 			//Joining stage is over, loop can exit
 			Join = FALSE;
 		}

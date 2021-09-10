@@ -1,10 +1,13 @@
-all: gameserver
+all: gameserver gameclient
 
 gameserver: game_server.o
-	gcc game_server.o connections.c -o gameserver
+	gcc game_server.c connections.c -o server
 
-game_server.o: game_server.c
-	gcc game_server.c -c
+gameclient: game_client.o
+	gcc game_client.c -o client
 
 clean:
 	rm *.o
+	rm server.exe
+	rm client.exe
+
