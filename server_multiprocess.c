@@ -5,16 +5,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 
 #define MAX 100
-#define PORT 8080
 #define SA struct sockaddr
 
+void playNumbers(int numPlayers);
 enum{CHILD, PARENT};
 
 // Function designed for chat between client and server.
@@ -31,6 +29,7 @@ void func(int sockfd, int playerNum, int sv)
         read(sv, &Turn, sizeof(Turn));
         printf("Its %d Turn, and im %d\n", Turn, playerNum);
         if(Turn == playerNum) {
+            write(sv, &Turn, sizeof(Turn));
             printf("From client %d: %s\t To client : ", playerNum, buff);
             bzero(buff, MAX);
             n = 0;
@@ -51,12 +50,15 @@ void func(int sockfd, int playerNum, int sv)
 }
 
 // Driver function
-int main()
+int main(int argc, char *argv[])
 {
 	int sockfd, connfd, len, maxPlayers = 2;
 	struct sockaddr_in servaddr, cli;
-    int sv[2];
+    int sv[2], PORT;
     char msg[MAX];
+
+    PORT = atoi(argv[1]);
+    maxPlayers = atoi(argv[3]);
 	if(socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) != 0){
 		perror("Socket pair error\n");
 	}else{
@@ -102,7 +104,7 @@ int main()
             exit(0);
         }
         else
-            printf("server acccept the client...\n");
+            printf("server acccept the client %d...\n", i);
 
         if(fork() == 0){
             // Function for chatting between client and server
@@ -113,10 +115,29 @@ int main()
             printf("I'm the parent!\n");
         }
     }
-    printf("Starting the game loop here\n");
-    int playerTurn = 0;
-    write(sv[PARENT], &playerTurn, sizeof(playerTurn));
-    read(sv[PARENT], &msg, sizeof(msg));
-    printf("From player %d: %s\n", playerTurn, msg);
+    printf("Left loop: %s\n", argv[2]);
+    char *game = argv[2];
+    if(strcmp(game, "numbers") == 0){
+        playNumbers(maxPlayers);
+    }else {
+        printf("Unrecognized game!");
+    }
     wait(NULL);
+    printf("Thanks for playing!\n");
+    
+}
+
+void playNumbers(int numPlayers){
+    printf("Starting the game loop here\n");
+    for(int i=0; i < maxPlayers; i++){
+        playerTurn = i;
+        printf("Waiting for Player %d\n", i);
+        do{
+            write(sv[PARENT], &playerTurn, sizeof(playerTurn));
+            read(sv[PARENT], &temp, sizeof(temp));
+        }while(temp != playerTurn);
+        read(sv[PARENT], &msg, sizeof(msg));
+        printf("From player %d: %s\n", playerTurn, msg);
+    }
+
 }
