@@ -12,40 +12,48 @@
 #define MAX 100
 #define SA struct sockaddr
 
-void playNumbers(int numPlayers);
+void playNumbers(int numPlayers, int sv[2]);
 enum{CHILD, PARENT};
 
 // Function designed for chat between client and server.
 void func(int sockfd, int playerNum, int sv)
 {
 	char buff[MAX];
-	int n, Turn;
+	int n, Turn, Action[3];
 	// infinite loop for chat
-	for (;;) {
+	while(1) {
 		bzero(buff, MAX);
-		// read the message from client and copy it in buffer
-		read(sockfd, buff, sizeof(buff));
-		// print buffer which contains the client contents
-        read(sv, &Turn, sizeof(Turn));
+		read(sockfd, buff, sizeof(buff)); //This blocks until the player sends a message
+        write(sv, &playerNum, sizeof(Turn)); //Let main controller process aware i'm ready to talk
+        read(sv, &Turn, sizeof(Turn)); //Controller lets me know whose turn it is
         printf("Its %d Turn, and im %d\n", Turn, playerNum);
         if(Turn == playerNum) {
-            write(sv, &Turn, sizeof(Turn));
-            printf("From client %d: %s\t To client : ", playerNum, buff);
-            bzero(buff, MAX);
-            n = 0;
-            // copy server message in the buffer
-            while ((buff[n++] = getchar()) != '\n')
-                ;
+            //It is actually my turn, continue on
+            printf("From client %d: %s\n", playerNum, buff);            
+            //Tokenise the input buffer
+            char *token = strtok(buff, " ");
+            //Determine what the player wanted to do
+            if(strcmp(token, "MOVE") == 0){
+                token = strtok(NULL, " ");
+                Action[0] = 1;
+                Action[2] = atoi(token);
+                write(sv, &Action, sizeof(Action));
+                //Send response back to controller thread
+            }else if(strcmp(token, "QUIT") == 0){
+                printf("User wants to quit\n");
+                write(sv, "QUIT", sizeof("QUIT"));
+                strcpy(buff, "You want to quit");
+            }else{
+                strcpy(buff, "ERROR");
+            }
 
-            // and send that buffer to client
-            write(sockfd, buff, sizeof(buff));
-            write(sv, buff, sizeof(buff));
             // if msg contains "Exit" then server exit and chat ended.
             if (strncmp("exit", buff, 4) == 0) {
-                printf("Server Exit...\n");
+                printf("Closing player socket...\n");
                 break;
             }
         }
+        bzero(buff, MAX);
 	}
 }
 
@@ -55,6 +63,7 @@ int main(int argc, char *argv[])
 	int sockfd, connfd, len, maxPlayers = 2;
 	struct sockaddr_in servaddr, cli;
     int sv[2], PORT;
+    char temp;
     char msg[MAX];
 
     PORT = atoi(argv[1]);
@@ -105,39 +114,68 @@ int main(int argc, char *argv[])
         }
         else
             printf("server acccept the client %d...\n", i);
+            strcpy(msg, "Welcome to the game Player ");
+            sprintf(temp, "%c", i);
+            strcat(msg, temp);
+            write(connfd, msg, sizeof(msg)); //Send welcome message
 
         if(fork() == 0){
             // Function for chatting between client and server
             func(connfd, i, sv[CHILD]);
-            // After chatting close the socket
+            // After chatting exit the thread
             exit(EXIT_SUCCESS);
         }else{
+            //Parent process handles the game logic
             printf("I'm the parent!\n");
         }
     }
-    printf("Left loop: %s\n", argv[2]);
+
+    //Joing stage is complete, proceed to the Play stage
     char *game = argv[2];
     if(strcmp(game, "numbers") == 0){
-        playNumbers(maxPlayers);
+        playNumbers(maxPlayers, sv);
     }else {
         printf("Unrecognized game!");
     }
+    //Ensure all threads have been closed
     wait(NULL);
-    printf("Thanks for playing!\n");
-    
+    printf("Server now closing\n");
+    exit(EXIT_SUCCESS);
 }
 
-void playNumbers(int numPlayers){
+void playNumbers(int numPlayers, int sv[2]){
+    char msg[MAX];
+    int playerTurn, temp, score = 0, Playing = 1;
+    int Action[3];
     printf("Starting the game loop here\n");
-    for(int i=0; i < maxPlayers; i++){
-        playerTurn = i;
-        printf("Waiting for Player %d\n", i);
-        do{
-            write(sv[PARENT], &playerTurn, sizeof(playerTurn));
-            read(sv[PARENT], &temp, sizeof(temp));
-        }while(temp != playerTurn);
-        read(sv[PARENT], &msg, sizeof(msg));
-        printf("From player %d: %s\n", playerTurn, msg);
-    }
+    while(Playing){
+        for(int i=0; i < numPlayers; i++){
+            playerTurn = i;
+            printf("Waiting for Player %d\n", i);
+            do{
+                read(sv[PARENT], &temp, sizeof(temp));
+                write(sv[PARENT], &playerTurn, sizeof(playerTurn));
+                printf("Player %d wants to talk\n", temp);
+            }while(temp != playerTurn);
+            read(sv[PARENT], &Action, sizeof(Action));
+            if(Action[0] == 1){
+                //Playing has taken the move action
+                score += Action[2];
+            }else if(Action[0] == 2){
+                //Player has exited
+                printf("Player %d has left the Game!\n", playerTurn);
+                Playing = 0;
+                if(numPlayers == 2){
+                    //Other player has won
+                    GameOver(numPlayers, sv);
+                }
+            }
+            printf("From player %d: %s\n", playerTurn, msg);
 
+        }
+    }
+}
+
+void GameOver(int numPlayers, int winner, int sv){
+    
 }
