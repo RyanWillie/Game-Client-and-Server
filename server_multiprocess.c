@@ -19,39 +19,41 @@ enum{CHILD, PARENT};
 void func(int sockfd, int playerNum, int sv)
 {
 	char buff[MAX];
+    char msg[MAX];
 	int n, Turn, Action[3];
 	// infinite loop for chat
 	while(1) {
 		bzero(buff, MAX);
-		read(sockfd, buff, sizeof(buff)); //This blocks until the player sends a message
-        write(sv, &playerNum, sizeof(Turn)); //Let main controller process aware i'm ready to talk
-        read(sv, &Turn, sizeof(Turn)); //Controller lets me know whose turn it is
-        printf("Its %d Turn, and im %d\n", Turn, playerNum);
-        if(Turn == playerNum) {
-            //It is actually my turn, continue on
-            printf("From client %d: %s\n", playerNum, buff);            
-            //Tokenise the input buffer
-            char *token = strtok(buff, " ");
-            //Determine what the player wanted to do
-            if(strcmp(token, "MOVE") == 0){
-                token = strtok(NULL, " ");
-                Action[0] = 1;
-                Action[2] = atoi(token);
-                write(sv, &Action, sizeof(Action));
-                //Send response back to controller thread
-            }else if(strcmp(token, "QUIT") == 0){
-                printf("User wants to quit\n");
-                write(sv, "QUIT", sizeof("QUIT"));
-                strcpy(buff, "You want to quit");
-            }else{
-                strcpy(buff, "ERROR");
-            }
 
-            // if msg contains "Exit" then server exit and chat ended.
-            if (strncmp("exit", buff, 4) == 0) {
-                printf("Closing player socket...\n");
-                break;
-            }
+        do{
+            sleep(3);
+            read(sv, &Turn, sizeof(Turn)); //Controller lets me know whose turn it is
+        }while(Turn != playerNum); //It is actually my turn, continue on
+
+        write(sv, &playerNum, sizeof(playerNum)); //Let main controller process aware i'm ready to talk
+        write(sockfd)  
+        printf("From client %d: %s\n", playerNum, buff);            
+        //Tokenise the input buffer
+        char *token = strtok(buff, " ");
+        //Determine what the player wanted to do
+        if(strcmp(token, "MOVE") == 0){
+            token = strtok(NULL, " ");
+            Action[0] = 1;
+            Action[2] = atoi(token);
+            write(sv, &Action, sizeof(Action));
+            //Send response back to controller thread
+        }else if(strcmp(token, "QUIT") == 0){
+            printf("User wants to quit\n");
+            write(sv, "QUIT", sizeof("QUIT"));
+            strcpy(buff, "You want to quit");
+        }else{
+            strcpy(buff, "ERROR");
+        }
+
+        // if msg contains "Exit" then server exit and chat ended.
+        if (strncmp("exit", buff, 4) == 0) {
+            printf("Closing player socket...\n");
+            break;
         }
         bzero(buff, MAX);
 	}
@@ -153,8 +155,8 @@ void playNumbers(int numPlayers, int sv[2]){
             playerTurn = i;
             printf("Waiting for Player %d\n", i);
             do{
-                read(sv[PARENT], &temp, sizeof(temp));
                 write(sv[PARENT], &playerTurn, sizeof(playerTurn));
+                read(sv[PARENT], &temp, sizeof(temp));
                 printf("Player %d wants to talk\n", temp);
             }while(temp != playerTurn);
             read(sv[PARENT], &Action, sizeof(Action));

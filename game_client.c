@@ -3,7 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#define MAX 80
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <netdb.h>
+
+#define MAX 100
 #define PORT 8080
 #define SA struct sockaddr
 
@@ -11,19 +17,44 @@ void func(int sockfd)
 {
 	char buff[MAX];
 	int n;
-	for (;;) {
+	bzero(buff, sizeof(buff));
+	//Get the welcome message
+	//printf("Getting welcome message\n");
+	printf("\n\n=============================================\n");
+	read(sockfd, buff, sizeof(buff));
+	printf("          %s\n", buff);
+	
+	bzero(buff, sizeof(buff));
+	while(1) {
 		bzero(buff, sizeof(buff));
-		printf("Enter the string : ");
-		n = 0;
-		while ((buff[n++] = getchar()) != '\n')
-			;
-		write(sockfd, buff, sizeof(buff));
-		bzero(buff, sizeof(buff));
-		read(sockfd, buff, sizeof(buff));
-		printf("From Server : %s", buff);
-		if ((strncmp(buff, "exit", 4)) == 0) {
-			printf("Client Exit...\n");
+		//printf("Waiting for message\n");
+		read(sockfd, buff, sizeof(buff)); //Wait until its my Turn
+		//printf("I received a messge %s\n", buff);
+		//printf("I received: %s\n", buff);
+		char *token = strtok(buff, " ");
+		//printf("Tokenised buffer\n");
+		if(strcmp(token, "GO") == 0){
+			printf("GO: ");
+			scanf("%s", buff);
+			write(sockfd, buff, sizeof(buff));
+			bzero(buff, sizeof(buff));
+		}else if(strcmp(token, "TEXT") == 0 ){
+			while( token != NULL ) {
+				printf( "%s ", token );
+				token = strtok(NULL, " ");
+			}
+			printf("\n");
+		}else if((strcmp(token, "ERROR")) == 0){
+			while( token != NULL ) {
+				printf( "%s ", token );
+				token = strtok(NULL, " ");
+			}
+			printf("\n");
+		}else if ((strcmp(token, "EXIT")) == 0) {
+			printf("Game has ended!\n");
 			break;
+		}else{
+			printf("No idea what you sent! %s\n", token);
 		}
 	}
 }
@@ -45,7 +76,7 @@ int main()
 
 	// assign IP, PORT
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port = htons(PORT);
 
 	// connect the client socket to server socket

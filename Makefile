@@ -1,7 +1,7 @@
 all: gameserver gameclient
 
 gameserver: game_server.o
-	gcc game_server.c connections.c -o server
+	gcc game_server.c -o server
 
 gameclient: game_client.o
 	gcc game_client.c -o client
