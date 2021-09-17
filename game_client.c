@@ -13,7 +13,7 @@
 #define SA struct sockaddr
 
 int hostname_to_ip(char * hostname , char* ip);
-void func(int sockfd);
+void playNumbers(int sockfd);
 
 int main(int argc, char *argv[])
 {
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 		printf("connected to the server..\n");
 
 	// function for chat
-	func(sockfd);
+	playNumbers(sockfd);
 
 	// close the socket
 	close(sockfd);
@@ -83,10 +83,10 @@ int hostname_to_ip(char * hostname , char* ip)
 	return 1;
 }
 
-void func(int sockfd)
+void playNumbers(int sockfd)
 {
 	char buff[MAX];
-	int n;
+	int n,reading = 1;
 	char MOVE[MAX];
 	char temp[3];
 	bzero(buff, sizeof(buff));
@@ -107,8 +107,15 @@ void func(int sockfd)
 		//printf("Tokenised buffer\n");
 		if(strcmp(token, "GO") == 0){
 			bzero(buff, sizeof(buff));
-			printf("GO: ");
-			scanf("%i", &n);
+			while(reading){
+				printf("GO: ");
+				scanf("%i", &n);
+				if(n >= 10){
+					printf("Invalid Input\n");
+				}else{
+					reading = 0;
+				}
+			}
 			strcpy(buff, "MOVE ");
 			sprintf(temp, "%d", n);
 			strcat(buff, temp);
