@@ -107,6 +107,7 @@ void playNumbers(int sockfd)
 		//printf("Tokenised buffer\n");
 		if(strcmp(token, "GO") == 0){
 			bzero(buff, sizeof(buff));
+			reading = 1;
 			while(reading){
 				printf("GO: ");
 				scanf("%i", &n);

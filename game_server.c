@@ -246,7 +246,7 @@ void playNumbersPlayer(int sockfd, int playerNum, int sv, int sv2)
 			write(sv, &Action, sizeof(Action));
 			loop = 0;
         }else{
-            printf("Client has sent an invalid message!\n");
+            printf("Client has sent an invalid message! |%s|\n", token);
 			token = strtok(NULL, " ");
             Action[0] = 2;
 			Action[1] = playerNum;
