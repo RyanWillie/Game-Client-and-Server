@@ -67,7 +67,7 @@ int hostname_to_ip(char * hostname , char* ip)
 	if ( (he = gethostbyname( hostname ) ) == NULL) 
 	{
 		// get the host info
-		herror("gethostbyname");
+		printf("gethostbyname");
 		return 1;
 	}
 

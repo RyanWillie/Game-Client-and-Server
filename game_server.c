@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
     		if(strcmp(game, "numbers") == 0)
             	playNumbersPlayer(connfd, i, sv[CHILD], sv2[CHILD]);
             // After chatting exit the thread
+			close(connfd);
             exit(EXIT_SUCCESS);
         }else{
             //Parent process handles the game logic
@@ -132,13 +133,13 @@ void playNumbersController(int numPlayers, int sv[2], int sv2[2]){
             }while(temp != playerTurn);
 			strcpy(msg, "PLAY");
 			write(sv[PARENT], msg, sizeof(msg));
-			printf("Sending player %d the score %d\n", playerTurn, score);
+			//printf("Sending player %d the score %d\n", playerTurn, score);
 			write(sv[PARENT], &score, sizeof(score));
 			//Wait to get the response from the thread what the player did
             read(sv[PARENT], &Action, sizeof(Action));
             if(Action[0] == 1){
                 //Playing has taken the move action
-				printf("Adding %d to the score\n", Action[2]);
+				//printf("Adding %d to the score\n", Action[2]);
                 score += Action[2];
 				printf("The scored is now %d\n", score);
 				if(score >= 30){
@@ -185,7 +186,7 @@ void playNumbersPlayer(int sockfd, int playerNum, int sv, int sv2)
 	strcat(msg, temp);
 	printf("1Writing to %d, |%s|\n", playerNum, msg);
 	write(sockfd, msg, sizeof(msg)); //Send welcome message
-	printf("Sent welcome message for %d\n", playerNum);
+	//printf("Sent welcome message for %d\n", playerNum);
 
 	// infinite loop for chat
 	while(loop) {
@@ -197,21 +198,21 @@ void playNumbersPlayer(int sockfd, int playerNum, int sv, int sv2)
 			//printf("Player %d but its %d Turn\n", playerNum, Turn);
             //Controller lets me know whose turn it is
         }while(Turn != playerNum); //It is actually my turn, continue on
-		printf("Player %d thread leaving loop\n", playerNum);
+		//printf("Player %d thread leaving loop\n", playerNum);
 		 //Let main controller process aware i'm ready to talk
 		//==================================== Send instructions to player ===========================================;
 		read(sv, &buff, sizeof(buff));
 		if(strcmp(buff, "PLAY") == 0){
 			read(sv, &n, sizeof(n));
-			printf("Player %d Received the score: %d\n", playerNum, n);
+			//printf("Player %d Received the score: %d\n", playerNum, n);
 			sprintf(sum, "%d", n);
 			strcpy(buff, "TEXT the sum is "); 
 			strcat(buff, sum);
-			printf("4Writing to %d, |%s|\n", playerNum, buff);
+			//printf("4Writing to %d, |%s|\n", playerNum, buff);
 			write(sockfd, &buff, sizeof(buff));
 			bzero(buff, MAX);
 			strcpy(buff, "GO");
-			printf("5Writing to %d, |%s|\n", playerNum, buff);
+			//printf("5Writing to %d, |%s|\n", playerNum, buff);
 			write(sockfd, &buff, sizeof(buff)); 
 			printf("Waiting to receive response\n");
 			if(read(sockfd, &buff, sizeof(buff)) == -1){
@@ -231,14 +232,14 @@ void playNumbersPlayer(int sockfd, int playerNum, int sv, int sv2)
         char *token = strtok(buff, " ");
         //Determine what the player wanted to do
         if(strcmp(token, "MOVE") == 0){
-			printf("They responded with a move!\n");
+			//printf("They responded with a move!\n");
             token = strtok(NULL, " ");
             Action[0] = 1;
             Action[2] = atoi(token);
             write(sv, &Action, sizeof(Action));
             //Send response back to controller thread
         }else if(strcmp(token, "QUIT") == 0){
-            printf("User wants to quit\n");
+            //printf("User wants to quit\n");
             token = strtok(NULL, " ");
             Action[0] = 2;
 			Action[1] = playerNum;
@@ -264,7 +265,7 @@ void GameOver(int numPlayers, int winner, int sv, int sv2){
 	char temp[10];
     for(int i=0; i < numPlayers; i++){
 		playerTurn = i; 
-		printf("Waiting for Player %d\n", i);
+		//printf("Waiting for Player %d\n", i);
 		do{
 			write(sv2, &playerTurn, sizeof(playerTurn));
 			read(sv2, &turn, sizeof(turn));
